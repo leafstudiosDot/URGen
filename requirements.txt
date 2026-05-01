@@ -1,0 +1,23 @@
+# Core
+numpy
+tqdm
+
+# LLM (Ollama API client)
+ollama
+
+# Speech recognition (Whisper)
+openai-whisper
+
+# Video processing
+ffmpeg-python
+moviepy
+
+# Audio handling
+pydub
+
+# Utilities
+opencv-python
+requests
+
+# Optional but useful
+python-dotenv

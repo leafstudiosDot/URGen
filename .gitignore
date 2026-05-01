@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+.env/
+.venv/
+
+# Output videos (DON'T push huge files)
+output/
+*.mp4
+*.wav
+*.mp3
+
+# Models (very large)
+*.onnx
+*.pt
+*.bin
+
+# OS junk
+.DS_Store
+Thumbs.db
