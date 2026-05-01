@@ -9,7 +9,11 @@ from core.orchestrator import Orchestrator
 def _parse_args() -> argparse.Namespace:
 	parser = argparse.ArgumentParser(description="URGen pipeline runner.")
 	parser.add_argument("topic", help="Topic for the short story.")
-	parser.add_argument("--model", default="mistral")
+	parser.add_argument(
+		"--model",
+		default="mistral",
+		choices=["mistral", "gpt-oss:120b-cloud"],
+	)
 	parser.add_argument("--voice", default="julie", choices=["julie", "daniel"])
 	parser.add_argument("--background", default=None)
 	parser.add_argument("--output-dir", default="output")

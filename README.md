@@ -18,7 +18,7 @@ pip install -r requirements.txt
 ## Run the pipeline
 
 ```bash
-python main.py "a haunted hospital hallway" --voice daniel --model mistral
+python main.py "topic" --voice daniel --model gpt-oss:120b-cloud
 ```
 
 ## Outputs
@@ -36,7 +36,7 @@ backgrounds until the narration ends.
 If you want to force a specific background instead of random selection:
 
 ```bash
-python main.py "stormy night rescue" --background assets/backgrounds/bg.mp4
+python main.py "topic" --background assets/backgrounds/bg.mp4
 ```
 
 ## Oddcast TTS standalone

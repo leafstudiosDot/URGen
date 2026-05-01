@@ -74,6 +74,7 @@ def resolve_voice_params(
 
 def download_mp3(url: str, output_path: Path) -> None:
 	output_path.parent.mkdir(parents=True, exist_ok=True)
+	print(f"[tts] Downloading MP3 -> {output_path}")
 	with urlopen(url) as response, open(output_path, "wb") as handle:
 		handle.write(response.read())
 

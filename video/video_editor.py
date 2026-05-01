@@ -23,6 +23,7 @@ def render_video(
     font_border_size: int,
 	music_volume: float,
 ) -> None:
+    print("[video] Rendering video with ffmpeg")
     command = build_ffmpeg_command(
         background_path=background_path,
 		background_list_path=background_list_path,
@@ -41,3 +42,4 @@ def render_video(
 		music_volume=music_volume,
     )
     subprocess.run(command, check=True)
+    print("[video] Render complete")

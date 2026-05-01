@@ -8,6 +8,8 @@ def _get_model(name: str):
     return _MODEL_CACHE[name]
 
 def transcribe(audio_path: str, *, model_name: str = "base") -> list[dict]:
+    print(f"[whisper] Transcribing: {audio_path} (model={model_name})")
     model = _get_model(model_name)
     result = model.transcribe(audio_path, word_timestamps=True)
+    print("[whisper] Transcription complete")
     return result["segments"]

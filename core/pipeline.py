@@ -21,15 +21,19 @@ class PipelineResult:
 	video_path: Path
 
 def run_pipeline(topic: str, config: PipelineConfig) -> PipelineResult:
+	print("[pipeline] Starting run")
 	config.raw_audio_dir.mkdir(parents=True, exist_ok=True)
 	config.raw_video_dir.mkdir(parents=True, exist_ok=True)
 	config.final_dir.mkdir(parents=True, exist_ok=True)
 	_clear_directory(config.raw_audio_dir)
 	_clear_directory(config.raw_video_dir)
+	print("[pipeline] Cleared output/raw_audio and output/raw_video")
 
 	script_text = generate_script(topic, model=config.model)
+	print("[pipeline] Script generated")
 	script_path = config.raw_audio_dir / f"{_slugify(topic)}.txt"
 	script_path.write_text(script_text, encoding="utf-8")
+	print(f"[pipeline] Script saved: {script_path}")
 
 	segment_dir = config.raw_audio_dir / "segments"
 	segment_dir.mkdir(parents=True, exist_ok=True)
@@ -38,11 +42,14 @@ def run_pipeline(topic: str, config: PipelineConfig) -> PipelineResult:
 		segment_dir,
 		voice=config.voice,
 	)
+	print(f"[pipeline] Generated {len(segment_paths)} audio segments")
 	audio_path = _concat_audio_segments(
 		segment_paths,
 		config.raw_audio_dir / f"{_slugify(topic)}.mp3",
 	)
+	print(f"[pipeline] Combined audio: {audio_path}")
 	audio_duration = _get_media_duration_seconds(audio_path)
+	print(f"[pipeline] Audio duration: {audio_duration:.2f}s")
 
 	music_path = _pick_random_file(config.music_dir, (".mp3",))
 	background_path = config.background_path
@@ -50,6 +57,7 @@ def run_pipeline(topic: str, config: PipelineConfig) -> PipelineResult:
 	if background_path is None:
 		backgrounds = _list_media_files(config.backgrounds_dir, (".mp4",))
 		if backgrounds:
+			print(f"[pipeline] Normalizing {len(backgrounds)} backgrounds")
 			background_list_path = _build_background_playlist(
 				backgrounds,
 				config.raw_video_dir,
@@ -58,11 +66,15 @@ def run_pipeline(topic: str, config: PipelineConfig) -> PipelineResult:
 				config.height,
 				config.fps,
 			)
+			print(f"[pipeline] Background playlist: {background_list_path}")
 		else:
 			background_path = None
+			print("[pipeline] No backgrounds found; using black background")
 	segments = transcribe(str(audio_path))
+	print(f"[pipeline] Transcription segments: {len(segments)}")
 	subtitles_path = config.raw_video_dir / f"{_slugify(topic)}.srt"
 	write_srt(segments, subtitles_path)
+	print(f"[pipeline] Subtitles written: {subtitles_path}")
 
 	video_path = config.final_dir / f"{_slugify(topic)}.mp4"
 	render_video(
@@ -82,6 +94,7 @@ def run_pipeline(topic: str, config: PipelineConfig) -> PipelineResult:
 		font_border_size=config.font_border_size,
 		music_volume=config.music_volume,
 	)
+	print(f"[pipeline] Final video: {video_path}")
 
 	return PipelineResult(
 		script_path=script_path,
@@ -170,7 +183,6 @@ def _build_background_playlist(
 	playlist_path.write_text("\n".join(lines), encoding="utf-8")
 	return playlist_path
 
-
 def _normalize_backgrounds(
 	backgrounds: list[Path],
 	output_dir: Path,
@@ -189,7 +201,7 @@ def _normalize_backgrounds(
 			str(path),
 			"-vf",
 			(
-				f"scale={width}:{height}:force_original_aspect_ratio=cover,"
+				f"scale={width}:{height}:force_original_aspect_ratio=increase,"
 				f"crop={width}:{height},fps={fps}"
 			),
 			"-r",
