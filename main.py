@@ -15,8 +15,8 @@ def _parse_args() -> argparse.Namespace:
 	parser.add_argument("--output-dir", default="output")
 	parser.add_argument("--width", type=int, default=1080)
 	parser.add_argument("--height", type=int, default=1920)
-	parser.add_argument("--fps", type=int, default=30)
-	parser.add_argument("--font-size", type=int, default=24)
+	parser.add_argument("--fps", type=int, default=60)
+	parser.add_argument("--font-size", type=int, default=14)
 	return parser.parse_args()
 
 def main() -> int:

@@ -47,9 +47,9 @@ def build_ffmpeg_command(
 		subtitle_filter = (
 			"subtitles='"
 			+ _escape_subtitles_path(subtitles_path)
-			+ f"':force_style='Fontsize={font_size},PrimaryColour=&H{_bgr_color(font_color)},"
-			f"OutlineColour=&H{_bgr_color(font_border_color)},Outline={font_border_size},"
-			"Alignment=5'"
+			+ f"':original_size={width}x{height}:force_style='Fontsize={font_size},"
+			f"PrimaryColour=&H{_bgr_color(font_color)},OutlineColour=&H{_bgr_color(font_border_color)},"
+			f"Outline={font_border_size},Alignment=8,MarginV=200,MarginL=15,MarginR=0'"
 		)
 		video_filters.append(subtitle_filter)
 

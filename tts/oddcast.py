@@ -53,6 +53,25 @@ def build_oddcast_url(
 	}
 	return f"{ODDCAST_BASE_URL}?{urlencode(query, quote_via=quote, safe='%')}"
 
+def resolve_voice_params(
+	*,
+	voice: str = "julie",
+	eid: int | None = None,
+	lid: int | None = None,
+	vid: int | None = None,
+	scene_id: int | None = None,
+) -> tuple[int, int, int, int]:
+	voice_key = voice.lower().strip()
+	if voice_key in VOICE_PRESETS:
+		preset = VOICE_PRESETS[voice_key]
+		eid = preset["eid"] if eid is None else eid
+		lid = preset["lid"] if lid is None else lid
+		vid = preset["vid"] if vid is None else vid
+		scene_id = preset["scene_id"] if scene_id is None else scene_id
+	if eid is None or lid is None or vid is None or scene_id is None:
+		raise ValueError("EID, LID, VID, and SceneID are required.")
+	return eid, lid, vid, scene_id
+
 def download_mp3(url: str, output_path: Path) -> None:
 	output_path.parent.mkdir(parents=True, exist_ok=True)
 	with urlopen(url) as response, open(output_path, "wb") as handle:
@@ -73,15 +92,13 @@ def generate_mp3(
 	http_err: str = "",
 	text_is_encoded: bool = False,
 ) -> Path:
-	voice_key = voice.lower().strip()
-	if voice_key in VOICE_PRESETS:
-		preset = VOICE_PRESETS[voice_key]
-		eid = preset["eid"] if eid is None else eid
-		lid = preset["lid"] if lid is None else lid
-		vid = preset["vid"] if vid is None else vid
-		scene_id = preset["scene_id"] if scene_id is None else scene_id
-	if eid is None or lid is None or vid is None or scene_id is None:
-		raise ValueError("EID, LID, VID, and SceneID are required.")
+	eid, lid, vid, scene_id = resolve_voice_params(
+		voice=voice,
+		eid=eid,
+		lid=lid,
+		vid=vid,
+		scene_id=scene_id,
+	)
 
 	url = build_oddcast_url(
 		text=text,
@@ -99,6 +116,44 @@ def generate_mp3(
 	decoded_text = unquote(text) if text_is_encoded else text
 	filename = f"{_sanitize_filename(decoded_text)}.{ext}"
 	output_path = out_dir / filename
+	download_mp3(url, output_path)
+	return output_path
+
+
+def generate_mp3_to_path(
+	text: str,
+	output_path: Path,
+	*,
+	voice: str = "julie",
+	eid: int | None = None,
+	lid: int | None = None,
+	vid: int | None = None,
+	acc: int = 9066743,
+	scene_id: int | None = None,
+	ext: str = "mp3",
+	fname: str = "",
+	http_err: str = "",
+	text_is_encoded: bool = False,
+) -> Path:
+	eid, lid, vid, scene_id = resolve_voice_params(
+		voice=voice,
+		eid=eid,
+		lid=lid,
+		vid=vid,
+		scene_id=scene_id,
+	)
+	url = build_oddcast_url(
+		text=text,
+		eid=eid,
+		lid=lid,
+		vid=vid,
+		acc=acc,
+		scene_id=scene_id,
+		ext=ext,
+		fname=fname,
+		http_err=http_err,
+		text_is_encoded=text_is_encoded,
+	)
 	download_mp3(url, output_path)
 	return output_path
 

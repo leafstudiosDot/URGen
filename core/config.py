@@ -20,7 +20,7 @@ class PipelineConfig:
 	width: int = 1080
 	height: int = 1920
 	fps: int = 60
-	font_size: int = 24
+	font_size: int = 14
 	font_color: str = "white"
 	font_border_color: str = "black"
 	font_border_size: int = 2

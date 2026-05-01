@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import random
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -9,7 +10,7 @@ from core.config import PipelineConfig
 from scripts.script_generator import generate_script
 from subtitles.subtitle_builder import write_srt
 from subtitles.whisper_engine import transcribe
-from tts.oddcast import generate_mp3
+from tts.oddcast import generate_mp3_to_path
 from video.video_editor import render_video
 
 @dataclass
@@ -23,15 +24,23 @@ def run_pipeline(topic: str, config: PipelineConfig) -> PipelineResult:
 	config.raw_audio_dir.mkdir(parents=True, exist_ok=True)
 	config.raw_video_dir.mkdir(parents=True, exist_ok=True)
 	config.final_dir.mkdir(parents=True, exist_ok=True)
+	_clear_directory(config.raw_audio_dir)
+	_clear_directory(config.raw_video_dir)
 
 	script_text = generate_script(topic, model=config.model)
 	script_path = config.raw_audio_dir / f"{_slugify(topic)}.txt"
 	script_path.write_text(script_text, encoding="utf-8")
 
-	audio_path = generate_mp3(
+	segment_dir = config.raw_audio_dir / "segments"
+	segment_dir.mkdir(parents=True, exist_ok=True)
+	segment_paths = _generate_segment_audio(
 		script_text,
-		config.raw_audio_dir,
+		segment_dir,
 		voice=config.voice,
+	)
+	audio_path = _concat_audio_segments(
+		segment_paths,
+		config.raw_audio_dir / f"{_slugify(topic)}.mp3",
 	)
 
 	music_path = _pick_random_file(config.music_dir, (".mp3",))
@@ -78,6 +87,36 @@ def run_pipeline(topic: str, config: PipelineConfig) -> PipelineResult:
 		subtitles_path=subtitles_path,
 		video_path=video_path,
 	)
+
+def _generate_segment_audio(text: str, output_dir: Path, *, voice: str) -> list[Path]:
+	lines = [line.strip() for line in text.splitlines() if line.strip()]
+	segment_paths: list[Path] = []
+	for index, line in enumerate(lines, start=1):
+		segment_path = output_dir / f"line_{index:03}.mp3"
+		generate_mp3_to_path(line, segment_path, voice=voice)
+		segment_paths.append(segment_path)
+	return segment_paths
+
+def _concat_audio_segments(segment_paths: list[Path], output_path: Path) -> Path:
+	output_path.parent.mkdir(parents=True, exist_ok=True)
+	concat_list = output_path.with_suffix(".txt")
+	lines = [f"file '{path.resolve().as_posix()}'" for path in segment_paths]
+	concat_list.write_text("\n".join(lines), encoding="utf-8")
+	command = [
+		"ffmpeg",
+		"-y",
+		"-f",
+		"concat",
+		"-safe",
+		"0",
+		"-i",
+		str(concat_list),
+		"-c",
+		"copy",
+		str(output_path),
+	]
+	subprocess.run(command, check=True)
+	return output_path
 
 def _slugify(text: str) -> str:
 	cleaned = "".join(c for c in text if c.isalnum() or c in " -_").strip()
@@ -132,3 +171,12 @@ def _get_media_duration_seconds(path: Path) -> float:
 		return float(value) if value else 0.0
 	except (subprocess.SubprocessError, ValueError):
 		return 0.0
+
+def _clear_directory(path: Path) -> None:
+	if not path.exists():
+		return
+	for entry in path.iterdir():
+		if entry.is_dir():
+			shutil.rmtree(entry)
+		else:
+			entry.unlink()
