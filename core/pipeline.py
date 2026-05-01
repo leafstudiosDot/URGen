@@ -46,13 +46,17 @@ def run_pipeline(topic: str, config: PipelineConfig) -> PipelineResult:
 	music_path = _pick_random_file(config.music_dir, (".mp3",))
 	background_path = config.background_path
 	background_list_path: Path | None = None
+	background_pad_seconds = 0.0
 	if background_path is None:
 		backgrounds = _list_media_files(config.backgrounds_dir, (".mp4",))
 		if backgrounds:
-			background_list_path = _build_background_playlist(
+			background_list_path, background_total = _build_background_playlist(
 				backgrounds,
-				audio_path,
 				config.raw_video_dir,
+			)
+			background_pad_seconds = max(
+				_get_media_duration_seconds(audio_path) - background_total,
+				0.0,
 			)
 		else:
 			background_path = None
@@ -71,6 +75,7 @@ def run_pipeline(topic: str, config: PipelineConfig) -> PipelineResult:
 		subtitles_path=subtitles_path,
 		output_path=video_path,
 		audio_duration=audio_duration,
+		background_pad_seconds=background_pad_seconds,
 		width=config.width,
 		height=config.height,
 		fps=config.fps,
@@ -133,22 +138,19 @@ def _pick_random_file(directory: Path, extensions: tuple[str, ...]) -> Path | No
 
 def _build_background_playlist(
 	backgrounds: list[Path],
-	audio_path: Path,
 	output_dir: Path,
-) -> Path:
-	audio_duration = _get_media_duration_seconds(audio_path)
-	playlist: list[Path] = []
+) -> tuple[Path, float]:
+	playlist = backgrounds[:]
+	random.shuffle(playlist)
 	current = 0.0
-	while current < audio_duration:
-		choice = random.choice(backgrounds)
-		playlist.append(choice)
-		current += max(_get_media_duration_seconds(choice), 1.0)
+	for path in playlist:
+		current += max(_get_media_duration_seconds(path), 0.1)
 
 	output_dir.mkdir(parents=True, exist_ok=True)
-	playlist_path = output_dir / f"backgrounds_{audio_path.stem}.txt"
+	playlist_path = output_dir / "backgrounds_random.txt"
 	lines = [f"file '{path.resolve().as_posix()}'" for path in playlist]
 	playlist_path.write_text("\n".join(lines), encoding="utf-8")
-	return playlist_path
+	return playlist_path, current
 
 def _get_media_duration_seconds(path: Path) -> float:
 	try:
