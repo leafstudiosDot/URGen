@@ -15,7 +15,6 @@ def build_ffmpeg_command(
 	subtitles_path: Path | None,
 	output_path: Path,
 	audio_duration: float,
-	background_pad_seconds: float,
 	width: int,
 	height: int,
 	fps: int,
@@ -44,10 +43,6 @@ def build_ffmpeg_command(
 		command += ["-i", str(music_path)]
 
 	video_filters = [f"scale={width}:{height}"]
-	if background_pad_seconds > 0:
-		video_filters.append(
-			f"tpad=stop_mode=clone:stop_duration={background_pad_seconds:.3f}"
-		)
 	if subtitles_path is not None:
 		subtitle_filter = (
 			"subtitles='"

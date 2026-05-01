@@ -42,26 +42,24 @@ def run_pipeline(topic: str, config: PipelineConfig) -> PipelineResult:
 		segment_paths,
 		config.raw_audio_dir / f"{_slugify(topic)}.mp3",
 	)
+	audio_duration = _get_media_duration_seconds(audio_path)
 
 	music_path = _pick_random_file(config.music_dir, (".mp3",))
 	background_path = config.background_path
 	background_list_path: Path | None = None
-	background_pad_seconds = 0.0
 	if background_path is None:
 		backgrounds = _list_media_files(config.backgrounds_dir, (".mp4",))
 		if backgrounds:
-			background_list_path, background_total = _build_background_playlist(
+			background_list_path = _build_background_playlist(
 				backgrounds,
 				config.raw_video_dir,
-			)
-			background_pad_seconds = max(
-				_get_media_duration_seconds(audio_path) - background_total,
-				0.0,
+				audio_duration,
+				config.width,
+				config.height,
+				config.fps,
 			)
 		else:
 			background_path = None
-
-	audio_duration = _get_media_duration_seconds(audio_path)
 	segments = transcribe(str(audio_path))
 	subtitles_path = config.raw_video_dir / f"{_slugify(topic)}.srt"
 	write_srt(segments, subtitles_path)
@@ -75,7 +73,6 @@ def run_pipeline(topic: str, config: PipelineConfig) -> PipelineResult:
 		subtitles_path=subtitles_path,
 		output_path=video_path,
 		audio_duration=audio_duration,
-		background_pad_seconds=background_pad_seconds,
 		width=config.width,
 		height=config.height,
 		fps=config.fps,
@@ -139,18 +136,74 @@ def _pick_random_file(directory: Path, extensions: tuple[str, ...]) -> Path | No
 def _build_background_playlist(
 	backgrounds: list[Path],
 	output_dir: Path,
-) -> tuple[Path, float]:
-	playlist = backgrounds[:]
-	random.shuffle(playlist)
+	minimum_duration: float,
+	width: int,
+	height: int,
+	fps: int,
+) -> Path:
+	normalized_dir = output_dir / "backgrounds_norm"
+	normalized = _normalize_backgrounds(
+		backgrounds,
+		normalized_dir,
+		width,
+		height,
+		fps,
+	)
+	playlist: list[Path] = []
 	current = 0.0
-	for path in playlist:
-		current += max(_get_media_duration_seconds(path), 0.1)
+	last_path: Path | None = None
+	while current < minimum_duration and normalized:
+		candidates = [path for path in normalized if path != last_path]
+		pool = candidates if candidates else normalized
+		batch = pool[:]
+		random.shuffle(batch)
+		for path in batch:
+			playlist.append(path)
+			current += max(_get_media_duration_seconds(path), 0.1)
+			last_path = path
+			if current >= minimum_duration:
+				break
 
 	output_dir.mkdir(parents=True, exist_ok=True)
 	playlist_path = output_dir / "backgrounds_random.txt"
 	lines = [f"file '{path.resolve().as_posix()}'" for path in playlist]
 	playlist_path.write_text("\n".join(lines), encoding="utf-8")
-	return playlist_path, current
+	return playlist_path
+
+
+def _normalize_backgrounds(
+	backgrounds: list[Path],
+	output_dir: Path,
+	width: int,
+	height: int,
+	fps: int,
+) -> list[Path]:
+	output_dir.mkdir(parents=True, exist_ok=True)
+	normalized: list[Path] = []
+	for index, path in enumerate(backgrounds, start=1):
+		output_path = output_dir / f"bg_{index:03}.mp4"
+		command = [
+			"ffmpeg",
+			"-y",
+			"-i",
+			str(path),
+			"-vf",
+			(
+				f"scale={width}:{height}:force_original_aspect_ratio=cover,"
+				f"crop={width}:{height},fps={fps}"
+			),
+			"-r",
+			str(fps),
+			"-an",
+			"-c:v",
+			"libx264",
+			"-pix_fmt",
+			"yuv420p",
+			str(output_path),
+		]
+		subprocess.run(command, check=True)
+		normalized.append(output_path)
+	return normalized
 
 def _get_media_duration_seconds(path: Path) -> float:
 	try:
