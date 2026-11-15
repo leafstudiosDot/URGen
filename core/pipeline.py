@@ -7,7 +7,9 @@ import subprocess
 from pathlib import Path
 
 from core.config import PipelineConfig
-from scripts.script_generator import generate_script
+import json
+
+from scripts.script_generator import generate_script, generate_metadata
 from subtitles.subtitle_builder import write_srt
 from subtitles.whisper_engine import transcribe
 from tts.oddcast import generate_mp3_to_path
@@ -19,6 +21,7 @@ class PipelineResult:
 	audio_path: Path
 	subtitles_path: Path
 	video_path: Path
+	metadata_path: Path
 
 def run_pipeline(topic: str, config: PipelineConfig) -> PipelineResult:
 	print("[pipeline] Starting run")
@@ -34,6 +37,11 @@ def run_pipeline(topic: str, config: PipelineConfig) -> PipelineResult:
 	script_path = config.raw_audio_dir / f"{_slugify(topic)}.txt"
 	script_path.write_text(script_text, encoding="utf-8")
 	print(f"[pipeline] Script saved: {script_path}")
+
+	metadata = generate_metadata(topic, script_text, model=config.model)
+	metadata_path = config.raw_audio_dir / f"{_slugify(topic)}.json"
+	metadata_path.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+	print(f"[pipeline] Metadata saved: {metadata_path}")
 
 	segment_dir = config.raw_audio_dir / "segments"
 	segment_dir.mkdir(parents=True, exist_ok=True)
@@ -101,6 +109,7 @@ def run_pipeline(topic: str, config: PipelineConfig) -> PipelineResult:
 		audio_path=audio_path,
 		subtitles_path=subtitles_path,
 		video_path=video_path,
+		metadata_path=metadata_path,
 	)
 
 def _generate_segment_audio(text: str, output_dir: Path, *, voice: str) -> list[Path]:

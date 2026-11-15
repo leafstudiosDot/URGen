@@ -44,3 +44,17 @@ python main.py "topic" --background assets/backgrounds/bg.mp4
 ```bash
 python tts/oddcast.py "Hello, Im Medico" --voice julie
 ```
+
+## Auto upload (YouTube / TikTok)
+
+Fill in `.env` (see `.env.example`) with your API credentials, then:
+
+```bash
+# Upload an already rendered video
+python -m upload.run output/final_shorts/video.mp4 --title "My title" --platforms youtube,tiktok
+
+# Or upload directly from the pipeline
+python main.py "topic" --upload youtube,tiktok
+```
+
+YouTube uses a refresh token (YOUTUBE_CLIENT_ID/SECRET/REFRESH_TOKEN). TikTok uses TIKTOK_CLIENT/SECRET plus an access/refresh token.
